@@ -125,7 +125,7 @@ func (m model) renderFilters() string {
 	if m.categoryFilter != "all" {
 		categoryStyle = m.styles.FilterActive
 	}
-	category := categoryStyle.Render("category: " + m.categoryFilter + "  [ / ]")
+	category := categoryStyle.Render("cat:" + m.categoryFilter + " [←/→]")
 	searchLabel := m.styles.FilterInactive.Render("search: " + searchPreview(m))
 	if m.searchMode {
 		searchLabel = m.styles.FilterActive.Render("search: " + m.searchInput.Value() + "|")
@@ -135,7 +135,7 @@ func (m model) renderFilters() string {
 	}
 	filterLine := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		append(statusParts, "  ", searchLabel, "  ", m.styles.Muted.Render("Browse"), "  ", category)...,
+		append(statusParts, "  ", searchLabel, "  ", category)...,
 	)
 	return m.styles.FilterBar.Width(m.listBlockWidth()).Render(filterLine)
 }
