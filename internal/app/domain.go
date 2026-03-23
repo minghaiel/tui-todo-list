@@ -18,6 +18,13 @@ func (m model) filteredIndexes() []int {
 		}
 		indexes = append(indexes, i)
 	}
+
+	sort.SliceStable(indexes, func(i, j int) bool {
+		left := m.todos[indexes[i]]
+		right := m.todos[indexes[j]]
+		return priorityOrder(left.Priority) > priorityOrder(right.Priority)
+	})
+
 	return indexes
 }
 
@@ -149,6 +156,21 @@ func normalizePriorityValue(input string) string {
 		return value
 	default:
 		return ""
+	}
+}
+
+func priorityOrder(priority string) int {
+	switch normalizePriorityValue(priority) {
+	case "urgent":
+		return 4
+	case "high":
+		return 3
+	case "medium":
+		return 2
+	case "low":
+		return 1
+	default:
+		return 0
 	}
 }
 

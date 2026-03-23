@@ -9,9 +9,9 @@ import (
 )
 
 func (m model) renderHeader() string {
-	title := m.styles.HeaderTitle.Render("Todolist")
-	subtitle := m.styles.HeaderSubtitle.Render("Bubble Tea TUI with categories, priorities, due dates, and filters")
-	return m.styles.Header.Render(lipJoinVertical(title, subtitle, "", m.renderStats()))
+	title := m.styles.HeaderTitle.Render("Tui-Todo-List")
+	subtitle := m.styles.HeaderSubtitle.Render("Priority-first task tracking")
+	return m.styles.Header.Width(m.listBlockWidth()).Render(lipJoinVertical(title, subtitle, m.renderStats()))
 }
 
 func (m model) renderStats() string {
@@ -28,10 +28,10 @@ func (m model) renderStats() string {
 
 	open := total - done
 	return lipgloss.JoinHorizontal(lipgloss.Left,
-		m.badge("All", fmt.Sprintf("%d", total), "#E8F3F1", "#113946"),
-		m.badge("Open", fmt.Sprintf("%d", open), "#FFF0DA", "#9A3412"),
-		m.badge("Done", fmt.Sprintf("%d", done), "#E7F7ED", "#166534"),
-		m.badge("Overdue", fmt.Sprintf("%d", overdue), "#FDEBEC", "#B42318"),
+		m.badge("All", fmt.Sprintf("%d", total), "#164E63", "#E6FFFB"),
+		m.badge("Open", fmt.Sprintf("%d", open), "#164E63", "#FFD8A8"),
+		m.badge("Done", fmt.Sprintf("%d", done), "#164E63", "#BBF7D0"),
+		m.badge("Overdue", fmt.Sprintf("%d", overdue), "#164E63", "#FECACA"),
 	)
 }
 
@@ -49,8 +49,8 @@ func (m model) renderList() string {
 	filters := m.renderFilters()
 	filtered := m.filteredIndexes()
 	if len(filtered) == 0 {
-		empty := m.styles.Empty.Render("当前筛选条件下没有任务。\n按 n 新建一个任务，或按 1/2/3、[/] 调整筛选。")
-		return lipJoinVertical(filters, "", empty)
+		empty := m.styles.Empty.Width(m.listBlockWidth()).Render("当前筛选条件下没有任务。\n按 n 新建一个任务，或按 1/2/3、[/] 调整筛选。")
+		return lipJoinVertical(filters, empty)
 	}
 
 	var rows []string
@@ -60,7 +60,7 @@ func (m model) renderList() string {
 	for i := start; i < end; i++ {
 		rows = append(rows, m.renderTaskCard(m.todos[filtered[i]], i == m.cursor))
 	}
-	return lipJoinVertical(filters, "", lipJoinVertical(rows...))
+	return lipJoinVertical(filters, lipJoinVertical(rows...))
 }
 
 func (m model) renderTaskCard(item todo, selected bool) string {
@@ -79,13 +79,15 @@ func (m model) renderTaskCard(item todo, selected bool) string {
 		titleStyle = m.styles.Completed
 	}
 
-	title := titleStyle.Render(check + " " + item.Title)
+	titleText := truncateRunes(item.Title, max(18, m.listBlockWidth()-18))
+	title := titleStyle.Render(check + " " + titleText)
 	meta := lipgloss.JoinHorizontal(lipgloss.Left,
 		m.priorityBadge(item.Priority),
 		m.categoryBadge(item.Category),
 		m.dueBadge(item),
 	)
-	return cardStyle.Render(lipJoinVertical(title, m.styles.Meta.Render(meta)))
+	body := lipJoinVertical(title, m.styles.Meta.Render(meta))
+	return cardStyle.Width(m.listBlockWidth()).Render(body)
 }
 
 func (m model) renderFilters() string {
@@ -113,7 +115,11 @@ func (m model) renderFilters() string {
 		categoryStyle = m.styles.FilterActive
 	}
 	category := categoryStyle.Render("category: " + m.categoryFilter + "  [ / ]")
-	return lipgloss.JoinHorizontal(lipgloss.Left, append(statusParts, "  ", category)...)
+	filterLine := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		append(statusParts, "  ", m.styles.Muted.Render("Browse"), "  ", category)...,
+	)
+	return m.styles.FilterBar.Width(m.listBlockWidth()).Render(filterLine)
 }
 
 func (m model) renderForm() string {
@@ -164,10 +170,11 @@ func (m model) renderFooter() string {
 	if m.errMessage != "" && m.mode == modeList {
 		message = m.styles.Error.Render(m.errMessage)
 	}
+	shortHelp := m.help.ShortHelpView(m.keys.ShortHelp())
+	statusLine := fmt.Sprintf("Filter: %s / %s  •  %s", m.statusFilterLabel(), m.categoryFilter, message)
 	return m.styles.Footer.Render(lipJoinVertical(
-		fmt.Sprintf("Filter: %s / %s", m.statusFilterLabel(), m.categoryFilter),
-		message,
-		m.help.View(m.keys),
+		statusLine,
+		shortHelp,
 	))
 }
 
@@ -185,7 +192,7 @@ func (m model) priorityBadge(priority string) string {
 		bg, fg = "#E6EEF8", "#1D4ED8"
 		p = "medium"
 	}
-	return lipgloss.NewStyle().Bold(true).Padding(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(strings.ToUpper(p))
+	return lipgloss.NewStyle().Bold(true).Padding(0, 1).MarginRight(1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(strings.ToUpper(p))
 }
 
 func (m model) renderPriorityPicker() string {
@@ -219,7 +226,7 @@ func (m model) renderPriorityPicker() string {
 func (m model) categoryBadge(category string) string {
 	c := normalizeCategory(category)
 	bg, fg := categoryColors(c)
-	return lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render("#" + c)
+	return lipgloss.NewStyle().Padding(0, 1).MarginRight(1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render("#" + c)
 }
 
 func (m model) dueBadge(item todo) string {
