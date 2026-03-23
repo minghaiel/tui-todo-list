@@ -9,9 +9,16 @@ import (
 )
 
 func (m model) renderHeader() string {
-	title := m.styles.HeaderTitle.Render("Tui-Todo-List")
-	subtitle := m.styles.HeaderSubtitle.Render("Priority-first task tracking")
-	return m.styles.Header.Width(m.listBlockWidth()).Render(lipJoinVertical(title, subtitle, m.renderStats()))
+	innerWidth := max(20, m.listBlockWidth()-4)
+	headerFill := lipgloss.NewStyle().
+		Width(innerWidth).
+		Background(lipgloss.Color("#0E3A46"))
+
+	title := headerFill.Render(m.styles.HeaderTitle.Render("Tui-Todo-List"))
+	subtitle := headerFill.Render(m.styles.HeaderSubtitle.Render("Priority-first task tracking"))
+	stats := headerFill.Render(m.renderStats())
+
+	return m.styles.Header.Width(m.listBlockWidth()).Render(lipJoinVertical(title, subtitle, stats))
 }
 
 func (m model) renderStats() string {
