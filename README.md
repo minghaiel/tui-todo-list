@@ -1,29 +1,28 @@
 # tui-todo-list
 
-一个用 Go 编写的终端待办事项应用，基于 `Bubble Tea`、`Bubbles` 和 `Lip Gloss` 实现。
+`tui-todo-list` 是一个基于 Go 和 Bubble Tea 的终端待办事项应用。
 
-它面向键盘操作，支持任务管理、搜索、批量操作、分类筛选和截止日期提醒，适合在终端里快速整理待办事项。
+它面向键盘操作，支持任务的创建、编辑、搜索、筛选、批量处理和本地持久化，适合在终端里快速管理个人待办。
 
 ## Screenshot
 
-![tui-todo-list screenshot](assets/image.png)
+![tui-todo-list screenshot](./tmp/image.png)
 
 ## Features
 
 - 任务新增、编辑、删除
-- 完成状态切换
-- 列表内联搜索
+- 单任务完成状态切换
 - 批量选择、批量完成、批量删除
-- 分类筛选
 - 状态筛选：`All / Open / Done`
+- 分类筛选：按已有分类循环切换
+- 搜索：按标题、分类、优先级、截止日期匹配
 - 优先级：`low / medium / high / urgent`
-- 列表按优先级排序，高优先级优先；同优先级按截止日期最近优先
-- 截止日期
+- 二级排序：先按优先级，再按截止日期
+- 截止日期与逾期识别
 - 本地 JSON 持久化
-- storage 和领域筛选逻辑单元测试
-- 终端友好的紧凑布局
+- storage 和领域筛选/排序逻辑单元测试
 
-## Tech Stack
+## Stack
 
 - Go `1.24.2`
 - `github.com/charmbracelet/bubbletea`
@@ -38,21 +37,67 @@
 go run .
 ```
 
-编译：
+构建：
 
 ```bash
 go build ./...
 ```
 
-构建后的可执行文件名称取决于当前目录名；如果只是本地使用，直接 `go run .` 最省事。
+运行测试：
 
-## Data Storage
+```bash
+go test ./...
+```
 
-任务数据默认保存在：
+## Data File
+
+任务默认保存到：
 
 ```text
 ~/.todo-tui.json
 ```
+
+首次启动如果没有本地数据，会生成示例任务。
+
+## Interaction
+
+### List View
+
+- `n` / `a`：新建任务
+- `enter` / `e`：编辑当前任务
+- `↑/k`：上移
+- `↓/j`：下移
+- `c` / `space`：切换完成状态
+- `d` / `x`：删除当前任务
+- `/`：进入搜索
+- `esc`：退出搜索
+- `v`：选中或取消选中当前任务
+- `u`：清空已选任务
+- `C`：批量切换已选任务完成状态
+- `X`：批量删除已选任务
+- `1`：筛选 `All`
+- `2`：筛选 `Open`
+- `3`：筛选 `Done`
+- `[` / `]`：切换分类筛选
+- `?`：显示或收起帮助
+- `q`：退出
+
+### Form View
+
+- `tab`：下一个字段
+- `shift+tab`：上一个字段
+- `enter`：确认当前字段，在最后一个字段保存
+- `ctrl+s`：直接保存
+- `esc`：取消编辑
+- `ctrl+d`：删除当前正在编辑的任务
+
+优先级字段支持：
+
+- `←/h`
+- `→/l`
+- `↑/k`
+- `↓/j`
+- `p`
 
 ## Task Model
 
@@ -64,54 +109,19 @@ go build ./...
 - `due_date`
 - `completed`
 
-界面包含：
+分类为空时会归一化为 `inbox`，优先级会归一化为 `low / medium / high / urgent`。
 
-- 列表视图
-- 搜索模式
-- 表单视图
-- 顶部统计条
-- 单行筛选栏
-- 彩色状态徽标
+## Sorting And Filtering
 
-## Keybindings
+当前列表查询逻辑由领域层统一处理，规则如下：
 
-### List View
-
-- `n` / `a`: 新建任务
-- `enter` / `e`: 编辑当前任务
-- `↑/k`: 上移
-- `↓/j`: 下移
-- `c` / `space`: 切换完成状态
-- `d` / `x`: 删除当前任务
-- `/`: 打开搜索
-- `esc`: 退出搜索
-- `v`: 选中 / 取消选中当前任务
-- `u`: 清空已选任务
-- `C`: 批量切换已选任务完成状态
-- `X`: 批量删除已选任务
-- `1`: 筛选 `All`
-- `2`: 筛选 `Open`
-- `3`: 筛选 `Done`
-- `[` / `]`: 切换分类筛选
-- `?`: 展开帮助
-- `q`: 退出
-
-### Form View
-
-- `tab`: 下一个字段
-- `shift+tab`: 上一个字段
-- `enter`: 确认当前字段；在最后一个字段保存
-- `ctrl+s`: 保存
-- `esc`: 取消
-- `ctrl+d`: 删除当前正在编辑的任务
-
-优先级字段支持：
-
-- `←/h`
-- `→/l`
-- `↑/k`
-- `↓/j`
-- `p`
+- 先按状态筛选
+- 再按分类筛选
+- 再按搜索关键字筛选
+- 排序优先级为：`urgent > high > medium > low`
+- 同优先级下，截止日期更近的任务靠前
+- 有截止日期的任务排在无截止日期任务前
+- 未完成任务排在已完成任务前
 
 ## Project Structure
 
@@ -119,10 +129,10 @@ go build ./...
 .
 ├── main.go
 ├── README.md
-├── assets
-│   └── image.png
 ├── go.mod
 ├── go.sum
+├── tmp
+│   └── image.png
 └── internal
     ├── app
     │   ├── domain.go
@@ -143,46 +153,40 @@ go build ./...
         └── todo_test.go
 ```
 
-## Design Notes
+## Architecture
 
-项目已经从单文件实现重构为按职责拆分的结构，目标是避免把所有逻辑堆在一个文件里，并尽量符合常见设计原则：
+当前代码按两层拆分：
 
-- 单一职责：视图、更新、存储、领域规则分离
-- 高内聚：表单逻辑集中在 `form.go`
-- 低耦合：入口只依赖 `app.Run()`
-- 可维护性：按 Bubble Tea 的职责拆分 `Update` / `View` / state
-- 可测试：领域层和存储层可独立验证
+- `internal/app`
+  负责 Bubble Tea 的状态管理、交互更新、表单处理、视图渲染和持久化接入。
+- `internal/domain`
+  负责任务模型、字段归一化、分类选项、搜索、筛选和排序规则。
 
-当前职责划分：
+这种拆分的目标是：
 
-- `run.go`: 应用启动和装配
-- `types.go`: 基础类型和应用状态
-- `keys.go`: 按键映射
-- `styles.go`: UI 样式
-- `model.go`: Bubble Tea 生命周期入口
-- `update_list.go`: 列表页交互
-- `form.go`: 表单页交互与保存
-- `search.go`: 搜索模式切换与输入初始化
-- `view.go`: 所有视图渲染
-- `internal/domain/todo.go`: 过滤、搜索、排序、分类、优先级、日期等规则
-- `storage.go`: 本地持久化
-- `util.go`: 通用辅助方法
-- `*_test.go`: 存储和领域逻辑的单元测试
+- 让 UI 层和业务规则分开
+- 让排序、筛选、归一化逻辑可单独测试
+- 降低单文件复杂度，避免所有逻辑堆在 `main.go`
+
+## Tests
+
+当前已有两类单元测试：
+
+- [internal/app/storage_test.go](/Users/starhming/owner/starhming/go-tui-demo/internal/app/storage_test.go#L1)
+  覆盖本地保存和读取
+- [internal/domain/todo_test.go](/Users/starhming/owner/starhming/go-tui-demo/internal/domain/todo_test.go#L1)
+  覆盖筛选、搜索、分类选项和排序
 
 ## Limitations
 
-当前版本还有一些可以继续优化的点：
+- 当前只支持单个本地 JSON 文件存储，没有同步能力
+- 批量操作以快捷键为主，没有单独的操作面板
+- 排序策略目前固定，还不支持运行时自定义
+- 还没有归档、标签、重复任务等更完整的任务管理能力
 
-- 任务数据目前只保存在单个本地 JSON 文件中，还没有导入导出或同步能力
-- 批量操作以键盘快捷键为主，还没有更显式的可视化操作条
-- 排序规则目前固定为“优先级 + 截止日期”，还不支持用户自定义排序策略
-- 暂无归档、重复任务、标签体系等更完整的任务管理能力
+## Next
 
-## Next Steps
-
-如果继续演进，建议优先做：
-
-1. 增加导入 / 导出和备份能力
-2. 为批量操作和搜索增加更明确的界面反馈
-3. 补充更多领域测试，例如逾期、高亮和边界日期场景
-4. 增加标签、归档和自定义排序策略
+- 增加导入、导出和备份能力
+- 增加标签和归档
+- 扩展更多排序模式
+- 增加更多领域和交互测试
