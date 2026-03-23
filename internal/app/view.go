@@ -65,12 +65,12 @@ func (m model) renderList() string {
 	start := m.scrollOffset
 	end := min(len(filtered), start+availableHeight)
 	for i := start; i < end; i++ {
-		rows = append(rows, m.renderTaskCard(m.todos[filtered[i]], i == m.cursor))
+		rows = append(rows, m.renderTaskCard(filtered[i], m.todos[filtered[i]], i == m.cursor))
 	}
 	return lipJoinVertical(filters, lipJoinVertical(rows...))
 }
 
-func (m model) renderTaskCard(item todo, selected bool) string {
+func (m model) renderTaskCard(index int, item todo, selected bool) string {
 	cardStyle := m.styles.Card
 	if selected {
 		cardStyle = m.styles.SelectedCard
@@ -87,7 +87,11 @@ func (m model) renderTaskCard(item todo, selected bool) string {
 	}
 
 	titleText := truncateRunes(item.Title, max(18, m.listBlockWidth()-18))
-	title := titleStyle.Render(check + " " + titleText)
+	pick := " "
+	if _, ok := m.selected[index]; ok {
+		pick = "•"
+	}
+	title := titleStyle.Render(pick + " " + check + " " + titleText)
 	meta := lipgloss.JoinHorizontal(lipgloss.Left,
 		m.priorityBadge(item.Priority),
 		m.categoryBadge(item.Category),
@@ -122,9 +126,16 @@ func (m model) renderFilters() string {
 		categoryStyle = m.styles.FilterActive
 	}
 	category := categoryStyle.Render("category: " + m.categoryFilter + "  [ / ]")
+	searchLabel := m.styles.FilterInactive.Render("search: " + searchPreview(m))
+	if m.searchMode {
+		searchLabel = m.styles.FilterActive.Render("search: " + m.searchInput.Value() + "|")
+	}
+	if !m.searchMode && m.searchQuery != "" {
+		searchLabel = m.styles.FilterActive.Render("search: " + m.searchQuery)
+	}
 	filterLine := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		append(statusParts, "  ", m.styles.Muted.Render("Browse"), "  ", category)...,
+		append(statusParts, "  ", searchLabel, "  ", m.styles.Muted.Render("Browse"), "  ", category)...,
 	)
 	return m.styles.FilterBar.Width(m.listBlockWidth()).Render(filterLine)
 }
@@ -179,6 +190,9 @@ func (m model) renderFooter() string {
 	}
 	shortHelp := m.help.ShortHelpView(m.keys.ShortHelp())
 	statusLine := fmt.Sprintf("Filter: %s / %s  •  %s", m.statusFilterLabel(), m.categoryFilter, message)
+	if len(m.selected) > 0 {
+		statusLine = fmt.Sprintf("%s  •  selected:%d", statusLine, len(m.selected))
+	}
 	return m.styles.Footer.Render(lipJoinVertical(
 		statusLine,
 		shortHelp,

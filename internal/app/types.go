@@ -2,12 +2,13 @@ package app
 
 import (
 	"time"
+	"tui-todo-list/internal/domain"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/textinput"
 )
 
-const dateLayout = "2006-01-02"
+const dateLayout = domain.DateLayout
 
 type appMode int
 
@@ -19,9 +20,9 @@ const (
 type statusFilter int
 
 const (
-	filterAll statusFilter = iota
-	filterOpen
-	filterDone
+	filterAll  statusFilter = statusFilter(domain.FilterAll)
+	filterOpen statusFilter = statusFilter(domain.FilterOpen)
+	filterDone statusFilter = statusFilter(domain.FilterDone)
 )
 
 type inputField int
@@ -33,13 +34,7 @@ const (
 	fieldDueDate
 )
 
-type todo struct {
-	Title     string `json:"title"`
-	Category  string `json:"category,omitempty"`
-	Priority  string `json:"priority,omitempty"`
-	DueDate   string `json:"due_date,omitempty"`
-	Completed bool   `json:"completed"`
-}
+type todo = domain.Todo
 
 type model struct {
 	todos          []todo
@@ -60,20 +55,12 @@ type model struct {
 	formInputs     []textinput.Model
 	formFocus      int
 	editingIndex   int
+	searchInput    textinput.Model
+	searchMode     bool
+	searchQuery    string
+	selected       map[int]struct{}
 }
 
 func normalizeTodos(todos []todo) []todo {
-	if len(todos) == 0 {
-		return []todo{
-			{Title: "升级这个 TUI", Category: "work", Priority: "high", DueDate: time.Now().AddDate(0, 0, 2).Format(dateLayout)},
-			{Title: "买点水果", Category: "life", Priority: "medium", DueDate: time.Now().AddDate(0, 0, 1).Format(dateLayout)},
-		}
-	}
-
-	for i := range todos {
-		todos[i].Category = normalizeCategory(todos[i].Category)
-		todos[i].Priority = normalizePriorityValue(todos[i].Priority)
-		todos[i].DueDate = trimSpace(todos[i].DueDate)
-	}
-	return todos
+	return domain.NormalizeTodos(todos, time.Now())
 }

@@ -1,42 +1,25 @@
 package app
 
 import (
-	"errors"
-	"sort"
-	"strings"
 	"time"
+	"tui-todo-list/internal/domain"
 )
 
 func (m model) filteredIndexes() []int {
-	var indexes []int
-	for i, item := range m.todos {
-		if !m.matchesStatus(item) {
-			continue
-		}
-		if m.categoryFilter != "all" && normalizeCategory(item.Category) != m.categoryFilter {
-			continue
-		}
-		indexes = append(indexes, i)
-	}
-
-	sort.SliceStable(indexes, func(i, j int) bool {
-		left := m.todos[indexes[i]]
-		right := m.todos[indexes[j]]
-		return priorityOrder(left.Priority) > priorityOrder(right.Priority)
-	})
-
-	return indexes
+	return domain.FilterAndSortIndexes(m.todos, domain.Query{
+		Status:   domain.StatusFilter(m.statusFilter),
+		Category: m.categoryFilter,
+		Search:   m.searchQuery,
+		Sort:     domain.SortPriorityDue,
+	}, time.Now())
 }
 
 func (m model) matchesStatus(item todo) bool {
-	switch m.statusFilter {
-	case filterOpen:
-		return !item.Completed
-	case filterDone:
-		return item.Completed
-	default:
-		return true
-	}
+	indexes := domain.FilterAndSortIndexes([]todo{item}, domain.Query{
+		Status: domain.StatusFilter(m.statusFilter),
+		Sort:   domain.SortPriorityDue,
+	}, time.Now())
+	return len(indexes) == 1
 }
 
 func (m *model) clampCursor() {
@@ -89,20 +72,7 @@ func (m model) prevCategory() string {
 }
 
 func (m model) categoryOptions() []string {
-	set := map[string]struct{}{"all": {}}
-	for _, item := range m.todos {
-		set[normalizeCategory(item.Category)] = struct{}{}
-	}
-
-	var options []string
-	for category := range set {
-		options = append(options, category)
-	}
-	sort.Strings(options)
-	if idx := indexOf(options, "all"); idx > 0 {
-		options[0], options[idx] = options[idx], options[0]
-	}
-	return options
+	return domain.CategoryOptions(m.todos)
 }
 
 func (m model) statusFilterLabel() string {
@@ -132,63 +102,25 @@ func categoryColors(category string) (string, string) {
 }
 
 func normalizeCategory(value string) string {
-	value = strings.TrimSpace(strings.ToLower(value))
-	if value == "" {
-		return "inbox"
-	}
-	return value
+	return domain.NormalizeCategory(value)
 }
 
 func normalizePriority(input string) (string, error) {
-	priority := normalizePriorityValue(input)
-	if priority == "" {
-		return "", errors.New("优先级必须是 low、medium、high 或 urgent。")
-	}
-	return priority, nil
+	return domain.NormalizePriority(input)
 }
 
 func normalizePriorityValue(input string) string {
-	value := strings.TrimSpace(strings.ToLower(input))
-	switch value {
-	case "", "med":
-		return "medium"
-	case "low", "medium", "high", "urgent":
-		return value
-	default:
-		return ""
-	}
+	return domain.NormalizePriorityValue(input)
 }
 
 func priorityOrder(priority string) int {
-	switch normalizePriorityValue(priority) {
-	case "urgent":
-		return 4
-	case "high":
-		return 3
-	case "medium":
-		return 2
-	case "low":
-		return 1
-	default:
-		return 0
-	}
+	return domain.PriorityOrder(priority)
 }
 
 func isOverdue(item todo, now time.Time) bool {
-	if item.Completed || trimSpace(item.DueDate) == "" {
-		return false
-	}
-	date, err := time.Parse(dateLayout, item.DueDate)
-	if err != nil {
-		return false
-	}
-	ny, nm, nd := now.Date()
-	today := time.Date(ny, nm, nd, 0, 0, 0, 0, now.Location())
-	return date.Before(today)
+	return domain.IsOverdue(item, now)
 }
 
 func sameDay(a, b time.Time) bool {
-	ay, am, ad := a.Date()
-	by, bm, bd := b.Date()
-	return ay == by && am == bm && ad == bd
+	return domain.SameDay(a, b)
 }

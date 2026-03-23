@@ -57,7 +57,11 @@ func (m model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case msg.String() == "enter":
-		return m.saveForm()
+		if m.formFocus == len(m.formInputs)-1 {
+			return m.saveForm()
+		}
+		m.focusNext()
+		return m, m.formInputs[m.formFocus].Focus()
 	}
 
 	if m.formFocus == int(fieldPriority) {

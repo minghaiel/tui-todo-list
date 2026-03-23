@@ -33,8 +33,10 @@ func newModel(storage string, todos []todo) model {
 		storage:        storage,
 		statusMessage:  "按 n 新增任务，Enter 编辑，1/2/3 切换状态筛选。",
 		editingIndex:   -1,
+		selected:       map[int]struct{}{},
 	}
 	m.initForm()
+	m.initSearch()
 	m.clampCursor()
 	return m
 }

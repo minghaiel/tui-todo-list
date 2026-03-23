@@ -55,3 +55,20 @@ func truncateRunes(value string, limit int) string {
 func (m model) listBlockWidth() int {
 	return min(max(48, m.width-10), 76)
 }
+
+func sortIntsDesc(values []int) {
+	for i := 0; i < len(values); i++ {
+		for j := i + 1; j < len(values); j++ {
+			if values[j] > values[i] {
+				values[i], values[j] = values[j], values[i]
+			}
+		}
+	}
+}
+
+func searchPreview(m model) string {
+	if m.searchQuery == "" {
+		return "/"
+	}
+	return truncateRunes(m.searchQuery, 18)
+}

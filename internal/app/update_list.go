@@ -6,6 +6,10 @@ import (
 )
 
 func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.searchMode {
+		return m.updateSearch(msg)
+	}
+
 	filtered := m.filteredIndexes()
 	keyStr := msg.String()
 
@@ -15,6 +19,8 @@ func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Help):
 		m.showHelp = !m.showHelp
 		m.help.ShowAll = m.showHelp
+	case key.Matches(msg, m.keys.Search):
+		return m, m.openSearch()
 	case key.Matches(msg, m.keys.Up):
 		if m.cursor > 0 {
 			m.cursor--
@@ -36,12 +42,32 @@ func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(filtered) == 0 {
 			break
 		}
+		if len(m.selected) > 0 {
+			m.toggleSelected()
+			break
+		}
 		m.toggleTodo(filtered[m.cursor])
 	case key.Matches(msg, m.keys.Delete):
+		if len(m.selected) > 0 {
+			m.deleteSelected()
+			break
+		}
 		if len(filtered) == 0 {
 			break
 		}
 		m.deleteTodo(filtered[m.cursor])
+	case key.Matches(msg, m.keys.Select):
+		if len(filtered) == 0 {
+			break
+		}
+		m.toggleSelection(filtered[m.cursor])
+	case key.Matches(msg, m.keys.ClearBatch):
+		m.selected = map[int]struct{}{}
+		m.statusMessage = "已清空批量选择。"
+	case key.Matches(msg, m.keys.BatchDone):
+		m.toggleSelected()
+	case key.Matches(msg, m.keys.BatchDelete):
+		m.deleteSelected()
 	case key.Matches(msg, m.keys.Filter):
 		m.applyStatusFilter(keyStr)
 	case key.Matches(msg, m.keys.Category):
@@ -60,6 +86,29 @@ func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.SearchExit):
+		m.closeSearch(false)
+		return m, nil
+	case key.Matches(msg, m.keys.Save) || msg.String() == "enter":
+		m.searchQuery = m.searchInput.Value()
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.cursor = 0
+		m.scrollOffset = 0
+		m.statusMessage = "搜索已应用。"
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.searchInput, cmd = m.searchInput.Update(msg)
+	m.searchQuery = m.searchInput.Value()
+	m.cursor = 0
+	m.scrollOffset = 0
+	return m, cmd
+}
+
 func (m *model) toggleTodo(index int) {
 	m.todos[index].Completed = !m.todos[index].Completed
 	m.statusMessage = "任务状态已更新。"
@@ -72,11 +121,85 @@ func (m *model) toggleTodo(index int) {
 func (m *model) deleteTodo(index int) {
 	title := m.todos[index].Title
 	m.todos = append(m.todos[:index], m.todos[index+1:]...)
+	delete(m.selected, index)
+	m.reindexSelectionAfterDelete([]int{index})
 	m.statusMessage = "已删除: " + title
 	m.errMessage = ""
 	if err := saveTodos(m.storage, m.todos); err != nil {
 		m.errMessage = err.Error()
 	}
+}
+
+func (m *model) toggleSelection(index int) {
+	if _, ok := m.selected[index]; ok {
+		delete(m.selected, index)
+	} else {
+		m.selected[index] = struct{}{}
+	}
+	m.statusMessage = "已更新批量选择。"
+}
+
+func (m *model) toggleSelected() {
+	if len(m.selected) == 0 {
+		m.statusMessage = "当前没有选中的任务。"
+		return
+	}
+	for index := range m.selected {
+		m.todos[index].Completed = !m.todos[index].Completed
+	}
+	m.statusMessage = "已切换选中任务状态。"
+	m.errMessage = ""
+	if err := saveTodos(m.storage, m.todos); err != nil {
+		m.errMessage = err.Error()
+	}
+}
+
+func (m *model) deleteSelected() {
+	if len(m.selected) == 0 {
+		m.statusMessage = "当前没有选中的任务。"
+		return
+	}
+
+	var indexes []int
+	for index := range m.selected {
+		indexes = append(indexes, index)
+	}
+	sortIntsDesc(indexes)
+	for _, index := range indexes {
+		m.todos = append(m.todos[:index], m.todos[index+1:]...)
+	}
+	m.reindexSelectionAfterDelete(indexes)
+	m.selected = map[int]struct{}{}
+	m.statusMessage = "已删除选中任务。"
+	m.errMessage = ""
+	if err := saveTodos(m.storage, m.todos); err != nil {
+		m.errMessage = err.Error()
+	}
+}
+
+func (m *model) reindexSelectionAfterDelete(deleted []int) {
+	if len(deleted) == 0 {
+		return
+	}
+	updated := map[int]struct{}{}
+	for index := range m.selected {
+		shift := 0
+		skip := false
+		for _, deletedIndex := range deleted {
+			if index == deletedIndex {
+				skip = true
+				break
+			}
+			if deletedIndex < index {
+				shift++
+			}
+		}
+		if skip {
+			continue
+		}
+		updated[index-shift] = struct{}{}
+	}
+	m.selected = updated
 }
 
 func (m *model) applyStatusFilter(keyStr string) {
