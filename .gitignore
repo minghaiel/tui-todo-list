@@ -1,0 +1,15 @@
+# Binaries
+tui-todo-list
+*.exe
+*.out
+*.test
+
+# Go build/test artifacts
+coverage.out
+*.coverprofile
+
+# Editor / OS files
+.DS_Store
+
+# Local temp files
+tmp/
