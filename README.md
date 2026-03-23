@@ -6,7 +6,7 @@
 
 ## Screenshot
 
-![tui-todo-list screenshot](./tmp/image.png)
+![tui-todo-list screenshot](./assets/image.png)
 
 ## Features
 
