@@ -2,21 +2,23 @@
 
 一个用 Go 编写的终端待办事项应用，基于 `Bubble Tea`、`Bubbles` 和 `Lip Gloss` 实现。
 
+它面向键盘操作，支持任务管理、优先级排序、分类筛选和截止日期提醒，适合在终端里快速整理待办事项。
+
 ## Screenshot
 
-将运行截图放到 `assets/tui-todo-list.png` 后，这里会直接显示：
+![tui-todo-list screenshot](assets/image.png)
 
-![tui-todo-list screenshot](assets/tui-todo-list.png)
-
-支持：
+## Features
 
 - 任务新增、编辑、删除
 - 完成状态切换
 - 分类筛选
 - 状态筛选：`All / Open / Done`
 - 优先级：`low / medium / high / urgent`
+- 列表按优先级排序，高优先级任务优先展示
 - 截止日期
 - 本地 JSON 持久化
+- 终端友好的紧凑布局
 
 ## Tech Stack
 
@@ -39,6 +41,8 @@ go run .
 go build ./...
 ```
 
+构建后的可执行文件名称取决于当前目录名；如果只是本地使用，直接 `go run .` 最省事。
+
 ## Data Storage
 
 任务数据默认保存在：
@@ -47,9 +51,9 @@ go build ./...
 ~/.todo-tui.json
 ```
 
-## Features
+## Task Model
 
-每个任务包含这些字段：
+每个任务包含以下字段：
 
 - `title`
 - `category`
@@ -57,12 +61,13 @@ go build ./...
 - `due_date`
 - `completed`
 
-应用内置：
+界面包含：
 
 - 列表视图
 - 表单视图
+- 顶部统计条
+- 单行筛选栏
 - 彩色状态徽标
-- 深浅色终端适配的基础样式
 
 ## Keybindings
 
@@ -122,7 +127,7 @@ go build ./...
 
 ## Design Notes
 
-这次重构的目标是避免把所有逻辑堆在一个文件里，并尽量符合常见设计原则：
+项目已经从单文件实现重构为按职责拆分的结构，目标是避免把所有逻辑堆在一个文件里，并尽量符合常见设计原则：
 
 - 单一职责：视图、更新、存储、领域规则分离
 - 高内聚：表单逻辑集中在 `form.go`
@@ -149,8 +154,8 @@ go build ./...
 
 - 表单 `Enter` 直接保存，交互还可以更细化
 - 缺少自动化测试
-- 长标题的布局处理还可以继续加强
 - 任务排序和搜索还没有实现
+- 目前排序主要按优先级，高级排序规则还可以继续扩展
 
 ## Next Steps
 
@@ -159,4 +164,4 @@ go build ./...
 1. 为 `storage` 和筛选逻辑补单元测试
 2. 给表单改成“逐字段确认”的交互
 3. 抽离更明确的领域层，例如 `internal/domain`
-4. 增加搜索、排序、批量操作
+4. 增加搜索、二级排序和批量操作
