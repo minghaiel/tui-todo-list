@@ -2,6 +2,12 @@
 
 一个用 Go 编写的终端待办事项应用，基于 `Bubble Tea`、`Bubbles` 和 `Lip Gloss` 实现。
 
+## Screenshot
+
+将运行截图放到 `assets/tui-todo-list.png` 后，这里会直接显示：
+
+![tui-todo-list screenshot](assets/tui-todo-list.png)
+
 支持：
 
 - 任务新增、编辑、删除
